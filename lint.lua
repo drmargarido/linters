@@ -5,6 +5,7 @@ local DocView = require "core.docview"
 
 local cache = setmetatable({}, { __mode = "k" })
 local hovered_item = nil
+local updating_cache = false
 
 config.max_box_chars = 80
 
@@ -21,6 +22,7 @@ end
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
   local pattern = linter.warning_pattern
+  local n = 0
   for line, col, warn in w_text:gmatch(pattern) do
     line = tonumber(line)
     col = tonumber(col)
@@ -31,6 +33,9 @@ local function get_file_warnings(warnings, path, linter)
     w.col = col
     w.text = warn
     table.insert(warnings[line], w)
+
+    if n % 20 == 0 then coroutine.yield() end
+    n = n + 1
   end
 end
 
@@ -54,18 +59,22 @@ local function get_cached(doc)
   -- IMPROVEMENT: Load cache items in a separate thread
   -- since some linters may take more time to run
   local t = cache[doc]
-  if not t or t.last_change_id ~= doc.clean_change_id then
-    t = {}
-    t.filename = doc.filename
-    t.path = system.absolute_path(doc.filename or "")
-    t.last_change_id = doc.clean_change_id
-
-    t.warnings = {}
-    local lints = matching_linters(doc.filename)
-    for _, l in ipairs(lints) do
-      get_file_warnings(t.warnings, t.path, l)
-    end
-    cache[doc] = t
+  if (not t or t.last_change_id ~= doc.clean_change_id)
+  and not updating_cache then
+    updating_cache = true
+    core.add_thread(function()
+      local d = {}
+      d.filename = doc.filename
+      d.path = system.absolute_path(doc.filename or "")
+      d.last_change_id = doc.clean_change_id
+      d.warnings = {}
+      local lints = matching_linters(doc.filename)
+      for _, l in ipairs(lints) do
+        get_file_warnings(d.warnings, d.path, l)
+      end
+      cache[doc] = d
+      updating_cache = false
+    end)
   end
   return t
 end
@@ -97,6 +106,7 @@ function DocView:on_mouse_moved(px, py)
   local hovered = {}
   local hovered_w = {}
   local cached = get_cached(doc)
+  if not cached then return end
   for line, warnings in pairs(cached.warnings) do
     local text = doc.lines[line]
     for _, warning in ipairs(warnings) do
@@ -131,6 +141,7 @@ function DocView:draw_line_text(idx, x, y)
   if #lints == 0 then return end
 
   local cached = get_cached(doc)
+  if not cached then return end
   local line_warnings = cached.warnings[idx]
   if not line_warnings then return end
 
@@ -140,7 +151,7 @@ function DocView:draw_line_text(idx, x, y)
     local color = style.linter_warning or style.syntax.literal
     local h = style.divider_size
     local line_h = self:get_line_height()
-    core.root_view:defer_draw(renderer.draw_rect, x1, y + line_h - h, x2 - x1, h, color)
+    renderer.draw_rect(x1, y + line_h - h, x2 - x1, h, color)
   end
 end
 
