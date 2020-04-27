@@ -22,6 +22,8 @@ local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
   local pattern = linter.warning_pattern
   for line, col, warn in w_text:gmatch(pattern) do
+    line = tonumber(line)
+    col = tonumber(col)
     if not warnings[line] then
       warnings[line] = {}
     end
@@ -49,6 +51,8 @@ local function matching_linters(filename)
 end
 
 local function get_cached(doc)
+  -- IMPROVEMENT: Load cache items in a separate thread
+  -- since some linters may take more time to run
   local t = cache[doc]
   if not t or t.last_change_id ~= doc.clean_change_id then
     t = {}
@@ -67,8 +71,11 @@ local function get_cached(doc)
 end
 
 local function get_word_limits(v, line_text, x, col)
+  if col == 0 then col = 1 end
   local _, e = line_text:sub(col):find("[%a_]*")
   e = e + col - 1
+  if e <= 0 then e = 1 end
+
   local font = v:get_font()
   local x1 = x + font:get_width(line_text:sub(1, col - 1))
   local x2 = x + font:get_width(line_text:sub(1, e))
@@ -91,7 +98,7 @@ function DocView:on_mouse_moved(px, py)
   local hovered_w = {}
   local cached = get_cached(doc)
   for line, warnings in pairs(cached.warnings) do
-    local text = doc.lines[tonumber(line)]
+    local text = doc.lines[line]
     for _, warning in ipairs(warnings) do
       local x, y = self:get_line_screen_position(line)
       local x1, x2 = get_word_limits(self, text, x, warning.col)
@@ -124,7 +131,7 @@ function DocView:draw_line_text(idx, x, y)
   if #lints == 0 then return end
 
   local cached = get_cached(doc)
-  local line_warnings = cached.warnings[tostring(idx)]
+  local line_warnings = cached.warnings[idx]
   if not line_warnings then return end
 
   local text = doc.lines[idx]
@@ -133,7 +140,7 @@ function DocView:draw_line_text(idx, x, y)
     local color = style.linter_warning or style.syntax.literal
     local h = style.divider_size
     local line_h = self:get_line_height()
-    renderer.draw_rect(x1, y + line_h - h, x2 - x1, h, color)
+    core.root_view:defer_draw(renderer.draw_rect, x1, y + line_h - h, x2 - x1, h, color)
   end
 end
 
@@ -165,7 +172,6 @@ local function draw_warning_box()
   local font = style.font
   local th = font:get_height()
   local pad = style.padding
-  local max_box_width = config.max_box_chars * font:get_width("a")
 
   local max_len = config.max_box_chars
   local full_text = table.concat(hovered_item.warnings, "\n\n")
