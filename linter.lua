@@ -90,8 +90,8 @@ local function get_word_limits(v, line_text, x, col)
 end
 
 local on_mouse_moved = DocView.on_mouse_moved
-function DocView:on_mouse_moved(px, py)
-  on_mouse_moved(self, px, py)
+function DocView:on_mouse_moved(px, py, ...)
+  on_mouse_moved(self, px, py, ...)
 
   local doc = self.doc
   local f = doc.filename
