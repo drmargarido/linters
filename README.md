@@ -15,7 +15,7 @@ Example of linting a file.
 
 ## Instructions
 
-1. To install any linter first copy the `lint.lua` file to the folder
+1. To install any linter first copy the `linter.lua` file to the folder
 `data/plugins/` of the lite editor which has the needed foundation for the linters.
 2. Copy the specific linters you want to use to the same folder.
 3. Make sure you have the commands needed for each linter to use them.

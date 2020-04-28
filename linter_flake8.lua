@@ -1,7 +1,7 @@
-local lint = require "plugins.lint"
+local linter = require "plugins.linter"
 
-lint.add_language {
-file_patterns = {"%.py$"},
+linter.add_language {
+  file_patterns = {"%.py$"},
   warning_pattern = "[^:]:(%d+):(%d+):%s[%w]+%s([^\n]*)",
   command = "flake8 $FILENAME"
 }
