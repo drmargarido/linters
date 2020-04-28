@@ -121,7 +121,7 @@ function DocView:on_mouse_moved(px, py, ...)
       local h = self:get_line_height()
       if px > x1 and px <= x2 and py > y and py <= y + h then
         table.insert(hovered_w, warning.text)
-        hovered.x = x1
+        hovered.x = px
         hovered.y = y + h
       end
     end
