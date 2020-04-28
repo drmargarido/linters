@@ -56,8 +56,6 @@ local function matching_linters(filename)
 end
 
 local function get_cached(doc)
-  -- IMPROVEMENT: Load cache items in a separate thread
-  -- since some linters may take more time to run
   local t = cache[doc]
   if (not t or t.last_change_id ~= doc.clean_change_id)
   and not updating_cache then
