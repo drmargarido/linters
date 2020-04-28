@@ -7,7 +7,7 @@ local cache = setmetatable({}, { __mode = "k" })
 local hovered_item = nil
 local updating_cache = false
 
-config.max_box_chars = 80
+config.linter_box_line_limit = 80
 
 local linters = {}
 
@@ -182,7 +182,7 @@ local function draw_warning_box()
   local th = font:get_height()
   local pad = style.padding
 
-  local max_len = config.max_box_chars
+  local max_len = config.linter_box_line_limit
   local full_text = table.concat(hovered_item.warnings, "\n\n")
   local lines = text_in_lines(full_text, max_len)
 
