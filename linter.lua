@@ -114,7 +114,7 @@ function DocView:on_mouse_moved(px, py, ...)
       if px > x1 and px <= x2 and py > y and py <= y + h then
         table.insert(hovered_w, warning.text)
         hovered.x = x1
-        hovered.y = y
+        hovered.y = y + h
       end
     end
   end
@@ -196,13 +196,13 @@ local function draw_warning_box()
   end
   local rw = text_width + pad.x * 2
   local rh = (th * #lines) + pad.y * 2
-  renderer.draw_rect(rx, ry + th, rw, rh, style.background3)
+  renderer.draw_rect(rx, ry, rw, rh, style.background3)
 
   -- draw text
   local color = style.text
   local x = rx + pad.x
   for i, line in ipairs(lines) do
-    local y = ry + pad.y + (th * i)
+    local y = ry + pad.y + th * (i - 1)
     renderer.draw_text(font, line, x, y, color)
   end
 end
