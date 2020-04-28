@@ -89,6 +89,14 @@ local function get_word_limits(v, line_text, x, col)
   return x1, x2
 end
 
+
+local on_mouse_wheel = DocView.on_mouse_wheel
+function DocView:on_mouse_wheel(...)
+  on_mouse_wheel(self, ...)
+  hovered_item = nil
+end
+
+
 local on_mouse_moved = DocView.on_mouse_moved
 function DocView:on_mouse_moved(px, py, ...)
   on_mouse_moved(self, px, py, ...)
