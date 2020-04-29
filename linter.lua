@@ -58,13 +58,15 @@ end
 
 local function update_cache(doc)
   local d = {}
-  local path = system.absolute_path(doc.filename or "")
-  local lints = matching_linters(doc.filename)
-  for _, l in ipairs(lints) do
-    get_file_warnings(d, path, l)
-  end
-  for idx, t in pairs(d) do
-    t.line_text = doc.lines[idx]
+  if doc.filename then
+    local path = system.absolute_path(doc.filename)
+    local lints = matching_linters(doc.filename)
+    for _, l in ipairs(lints) do
+      get_file_warnings(d, path, l)
+    end
+    for idx, t in pairs(d) do
+      t.line_text = doc.lines[idx]
+    end
   end
   cache[doc] = d
 end
