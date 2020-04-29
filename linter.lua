@@ -57,7 +57,7 @@ end
 
 
 local function update_cache(doc)
-  local lints = matching_linters(doc.filename)
+  local lints = matching_linters(doc.filename or "")
   if not lints[1] then return end
 
   local d = {}
