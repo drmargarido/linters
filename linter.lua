@@ -113,7 +113,12 @@ function DocView:on_mouse_moved(px, py, ...)
   local cached = cache[doc]
   if not cached then return end
 
-
+  -- Check mouse is over this view
+  local x, y, w, h = self.position.x, self.position.y, self.size.x, self.size.y
+  if px < x or px > x + w or py < y or py > y + h then
+    hover_boxes[self] = nil
+    return
+  end
 
   -- Detect if any warning is hovered
   local hovered = {}
