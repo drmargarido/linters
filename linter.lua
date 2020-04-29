@@ -1,7 +1,7 @@
-local core = require "core"
 local style = require "core.style"
 local config = require "core.config"
 local DocView = require "core.docview"
+local RootView = require "core.rootview"
 local Doc = require "core.doc"
 
 local cache = setmetatable({}, { __mode = "k" })
@@ -224,12 +224,10 @@ local function draw_warning_box()
 end
 
 
-local draw = DocView.draw
-function DocView:draw()
+local draw = RootView.draw
+function RootView:draw()
   draw(self)
-  if hovered_item then
-    core.root_view:defer_draw(draw_warning_box, self)
-  end
+  if hovered_item then draw_warning_box() end
 end
 
 
