@@ -1,14 +1,14 @@
+local core = require "core"
 local style = require "core.style"
 local config = require "core.config"
 local DocView = require "core.docview"
-local RootView = require "core.rootview"
 local Doc = require "core.doc"
-
-local cache = setmetatable({}, { __mode = "k" })
-local hovered_item = nil
 
 config.linter_box_line_limit = 80
 
+
+local cache = setmetatable({}, { __mode = "k" })
+local hover_boxes = setmetatable({}, { __mode = "k" })
 local linters = {}
 
 
@@ -101,7 +101,7 @@ end
 local on_mouse_wheel = DocView.on_mouse_wheel
 function DocView:on_mouse_wheel(...)
   on_mouse_wheel(self, ...)
-  hovered_item = nil
+  hover_boxes[self] = nil
 end
 
 
@@ -132,11 +132,7 @@ function DocView:on_mouse_moved(px, py, ...)
     end
   end
   hovered.warnings = hovered_w
-  if #hovered.warnings ~= 0 then
-    hovered_item = hovered
-  else
-    hovered_item = nil
-  end
+  hover_boxes[self] = hovered.warnings[1] and hovered
 end
 
 
@@ -193,7 +189,7 @@ local function text_in_lines(text, max_len)
 end
 
 
-local function draw_warning_box()
+local function draw_warning_box(hovered_item)
   local font = style.font
   local th = font:get_height()
   local pad = style.padding
@@ -224,10 +220,12 @@ local function draw_warning_box()
 end
 
 
-local draw = RootView.draw
-function RootView:draw()
+local draw = DocView.draw
+function DocView:draw()
   draw(self)
-  if hovered_item then draw_warning_box() end
+  if hover_boxes[self] then
+    core.root_view:defer_draw(draw_warning_box, hover_boxes[self])
+  end
 end
 
 
