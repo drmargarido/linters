@@ -4,6 +4,7 @@ Linters for https://github.com/rxi/lite
 ## Available linters
 
 * linter\_flake8 - Uses flake8 for python files
+* linter\_gocompiler - Uses the go vet command to display compilation errors in golang files
 * linter\_golint - Uses golint for golang files
 * linter\_luacheck - Uses luacheck for lua files
 
