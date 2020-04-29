@@ -14,7 +14,7 @@ local linters = {}
 
 local function run_lint_cmd(path, linter)
   local cmd = linter.command:gsub("$FILENAME", path)
-  local args = table.concat(linter.args or {}, "")
+  local args = table.concat(linter.args or {}, " ")
   cmd = cmd:gsub("$ARGS", args)
   local fp = io.popen(cmd, "r")
   local res = fp:read("*a")
