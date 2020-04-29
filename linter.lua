@@ -116,14 +116,16 @@ function DocView:on_mouse_moved(px, py, ...)
   local hovered_w = {}
   for line, warnings in pairs(cached) do
     local text = doc.lines[line]
-    for _, warning in ipairs(warnings) do
-      local x, y = self:get_line_screen_position(line)
-      local x1, x2 = get_word_limits(self, text, x, warning.col)
-      local h = self:get_line_height()
-      if px > x1 and px <= x2 and py > y and py <= y + h then
-        table.insert(hovered_w, warning.text)
-        hovered.x = px
-        hovered.y = y + h
+    if text == warnings.line_text then
+      for _, warning in ipairs(warnings) do
+        local x, y = self:get_line_screen_position(line)
+        local x1, x2 = get_word_limits(self, text, x, warning.col)
+        local h = self:get_line_height()
+        if px > x1 and px <= x2 and py > y and py <= y + h then
+          table.insert(hovered_w, warning.text)
+          hovered.x = px
+          hovered.y = y + h
+        end
       end
     end
   end
