@@ -2,14 +2,15 @@ local core = require "core"
 local style = require "core.style"
 local config = require "core.config"
 local DocView = require "core.docview"
+local Doc = require "core.doc"
 
 local cache = setmetatable({}, { __mode = "k" })
 local hovered_item = nil
-local updating_cache = false
 
 config.linter_box_line_limit = 80
 
 local linters = {}
+
 
 local function run_lint_cmd(path, linter)
   local cmd = linter.command:gsub("$FILENAME", path)
@@ -19,10 +20,10 @@ local function run_lint_cmd(path, linter)
   return res:gsub("%\n$", ""), success
 end
 
+
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
   local pattern = linter.warning_pattern
-  local n = 0
   for line, col, warn in w_text:gmatch(pattern) do
     line = tonumber(line)
     col = tonumber(col)
@@ -33,17 +34,16 @@ local function get_file_warnings(warnings, path, linter)
     w.col = col
     w.text = warn
     table.insert(warnings[line], w)
-
-    if n % 20 == 0 then coroutine.yield() end
-    n = n + 1
   end
 end
+
 
 local function matches_any(filename, patterns)
   for _, ptn in ipairs(patterns) do
     if filename:find(ptn) then return true end
   end
 end
+
 
 local function matching_linters(filename)
   local matched = {}
@@ -55,27 +55,20 @@ local function matching_linters(filename)
   return matched
 end
 
-local function get_cached(doc)
-  local t = cache[doc]
-  if (not t or t.last_change_id ~= doc.clean_change_id)
-  and not updating_cache then
-    updating_cache = true
-    core.add_thread(function()
-      local d = {}
-      d.filename = doc.filename
-      d.path = system.absolute_path(doc.filename or "")
-      d.last_change_id = doc.clean_change_id
-      d.warnings = {}
-      local lints = matching_linters(doc.filename)
-      for _, l in ipairs(lints) do
-        get_file_warnings(d.warnings, d.path, l)
-      end
-      cache[doc] = d
-      updating_cache = false
-    end)
+
+local function update_cache(doc)
+  local d = {}
+  local path = system.absolute_path(doc.filename or "")
+  local lints = matching_linters(doc.filename)
+  for _, l in ipairs(lints) do
+    get_file_warnings(d, path, l)
   end
-  return t
+  for idx, t in pairs(d) do
+    t.line_text = doc.lines[idx]
+  end
+  cache[doc] = d
 end
+
 
 local function get_word_limits(v, line_text, x, col)
   if col == 0 then col = 1 end
@@ -87,6 +80,19 @@ local function get_word_limits(v, line_text, x, col)
   local x1 = x + font:get_width(line_text:sub(1, col - 1))
   local x2 = x + font:get_width(line_text:sub(1, e))
   return x1, x2
+end
+
+
+local clean = Doc.clean
+function Doc:clean(...)
+  clean(self, ...)
+  update_cache(self)
+end
+
+local new = Doc.new
+function Doc:new(...)
+  new(self, ...)
+  update_cache(self)
 end
 
 
@@ -102,18 +108,13 @@ function DocView:on_mouse_moved(px, py, ...)
   on_mouse_moved(self, px, py, ...)
 
   local doc = self.doc
-  local f = doc.filename
-  if not f then return end
-
-  local lints = matching_linters(f)
-  if #lints == 0 then return end
+  local cached = cache[doc]
+  if not cached then return end
 
   -- Detect if any warning is hovered
   local hovered = {}
   local hovered_w = {}
-  local cached = get_cached(doc)
-  if not cached then return end
-  for line, warnings in pairs(cached.warnings) do
+  for line, warnings in pairs(cached) do
     local text = doc.lines[line]
     for _, warning in ipairs(warnings) do
       local x, y = self:get_line_screen_position(line)
@@ -134,23 +135,24 @@ function DocView:on_mouse_moved(px, py, ...)
   end
 end
 
+
 local draw_line_text = DocView.draw_line_text
 function DocView:draw_line_text(idx, x, y)
   draw_line_text(self, idx, x, y)
 
-  -- Draws lines in linted places
   local doc = self.doc
-  local f = doc.filename
-  if not f then return end
-
-  local lints = matching_linters(f)
-  if #lints == 0 then return end
-
-  local cached = get_cached(doc)
+  local cached = cache[doc]
   if not cached then return end
-  local line_warnings = cached.warnings[idx]
+
+  local line_warnings = cached[idx]
   if not line_warnings then return end
 
+  -- Don't draw underlines if line text has changed
+  if line_warnings.line_text ~= doc.lines[idx] then
+    return
+  end
+
+  -- Draws lines in linted places
   local text = doc.lines[idx]
   for _, warning in ipairs(line_warnings) do
     local x1, x2 = get_word_limits(self, text, x, warning.col)
@@ -160,6 +162,7 @@ function DocView:draw_line_text(idx, x, y)
     renderer.draw_rect(x1, y + line_h - h, x2 - x1, h, color)
   end
 end
+
 
 local function text_in_lines(text, max_len)
   local text_lines = {}
@@ -184,6 +187,7 @@ local function text_in_lines(text, max_len)
   end
   return text_lines
 end
+
 
 local function draw_warning_box()
   local font = style.font
@@ -215,13 +219,15 @@ local function draw_warning_box()
   end
 end
 
+
 local draw = DocView.draw
 function DocView:draw()
   draw(self)
-
-  if not hovered_item then return end
-  core.root_view:defer_draw(draw_warning_box, self)
+  if hovered_item then
+    core.root_view:defer_draw(draw_warning_box, self)
+  end
 end
+
 
 return {
   add_language = function(lang)
