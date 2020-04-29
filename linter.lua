@@ -7,7 +7,7 @@ local cache = setmetatable({}, { __mode = "k" })
 local hovered_item = nil
 local updating_cache = false
 
-config.max_box_chars = 80
+config.linter_box_line_limit = 80
 
 local linters = {}
 
@@ -79,7 +79,7 @@ end
 
 local function get_word_limits(v, line_text, x, col)
   if col == 0 then col = 1 end
-  local _, e = line_text:sub(col):find("[%a_]*")
+  local _, e = line_text:sub(col):find(config.symbol_pattern)
   e = e + col - 1
   if e <= 0 then e = 1 end
 
@@ -88,6 +88,14 @@ local function get_word_limits(v, line_text, x, col)
   local x2 = x + font:get_width(line_text:sub(1, e))
   return x1, x2
 end
+
+
+local on_mouse_wheel = DocView.on_mouse_wheel
+function DocView:on_mouse_wheel(...)
+  on_mouse_wheel(self, ...)
+  hovered_item = nil
+end
+
 
 local on_mouse_moved = DocView.on_mouse_moved
 function DocView:on_mouse_moved(px, py, ...)
@@ -113,8 +121,8 @@ function DocView:on_mouse_moved(px, py, ...)
       local h = self:get_line_height()
       if px > x1 and px <= x2 and py > y and py <= y + h then
         table.insert(hovered_w, warning.text)
-        hovered.x = x1
-        hovered.y = y
+        hovered.x = px
+        hovered.y = y + h
       end
     end
   end
@@ -182,7 +190,7 @@ local function draw_warning_box()
   local th = font:get_height()
   local pad = style.padding
 
-  local max_len = config.max_box_chars
+  local max_len = config.linter_box_line_limit
   local full_text = table.concat(hovered_item.warnings, "\n\n")
   local lines = text_in_lines(full_text, max_len)
 
@@ -196,13 +204,13 @@ local function draw_warning_box()
   end
   local rw = text_width + pad.x * 2
   local rh = (th * #lines) + pad.y * 2
-  renderer.draw_rect(rx, ry + th, rw, rh, style.background3)
+  renderer.draw_rect(rx, ry, rw, rh, style.background3)
 
   -- draw text
   local color = style.text
   local x = rx + pad.x
   for i, line in ipairs(lines) do
-    local y = ry + pad.y + (th * i)
+    local y = ry + pad.y + th * (i - 1)
     renderer.draw_text(font, line, x, y, color)
   end
 end
