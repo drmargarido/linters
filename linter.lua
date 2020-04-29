@@ -4,11 +4,11 @@ local config = require "core.config"
 local DocView = require "core.docview"
 local Doc = require "core.doc"
 
-local cache = setmetatable({}, { __mode = "k" })
-local hovered_item = nil
-
 config.linter_box_line_limit = 80
 
+
+local cache = setmetatable({}, { __mode = "k" })
+local hover_boxes = setmetatable({}, { __mode = "k" })
 local linters = {}
 
 
@@ -57,9 +57,11 @@ end
 
 
 local function update_cache(doc)
+  local lints = matching_linters(doc.filename or "")
+  if not lints[1] then return end
+
   local d = {}
-  local path = system.absolute_path(doc.filename or "")
-  local lints = matching_linters(doc.filename)
+  local path = system.absolute_path(doc.filename)
   for _, l in ipairs(lints) do
     get_file_warnings(d, path, l)
   end
@@ -99,7 +101,7 @@ end
 local on_mouse_wheel = DocView.on_mouse_wheel
 function DocView:on_mouse_wheel(...)
   on_mouse_wheel(self, ...)
-  hovered_item = nil
+  hover_boxes[self] = nil
 end
 
 
@@ -110,6 +112,13 @@ function DocView:on_mouse_moved(px, py, ...)
   local doc = self.doc
   local cached = cache[doc]
   if not cached then return end
+
+  -- Check mouse is over this view
+  local x, y, w, h = self.position.x, self.position.y, self.size.x, self.size.y
+  if px < x or px > x + w or py < y or py > y + h then
+    hover_boxes[self] = nil
+    return
+  end
 
   -- Detect if any warning is hovered
   local hovered = {}
@@ -130,11 +139,7 @@ function DocView:on_mouse_moved(px, py, ...)
     end
   end
   hovered.warnings = hovered_w
-  if #hovered.warnings ~= 0 then
-    hovered_item = hovered
-  else
-    hovered_item = nil
-  end
+  hover_boxes[self] = hovered.warnings[1] and hovered
 end
 
 
@@ -191,7 +196,7 @@ local function text_in_lines(text, max_len)
 end
 
 
-local function draw_warning_box()
+local function draw_warning_box(hovered_item)
   local font = style.font
   local th = font:get_height()
   local pad = style.padding
@@ -225,8 +230,8 @@ end
 local draw = DocView.draw
 function DocView:draw()
   draw(self)
-  if hovered_item then
-    core.root_view:defer_draw(draw_warning_box, self)
+  if hover_boxes[self] then
+    core.root_view:defer_draw(draw_warning_box, hover_boxes[self])
   end
 end
 
