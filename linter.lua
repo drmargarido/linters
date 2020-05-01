@@ -1,5 +1,6 @@
 local core = require "core"
 local style = require "core.style"
+local command = require "core.command"
 local config = require "core.config"
 local DocView = require "core.docview"
 local Doc = require "core.doc"
@@ -236,6 +237,35 @@ function DocView:draw()
     core.root_view:defer_draw(draw_warning_box, hover_boxes[self])
   end
 end
+
+
+local function has_cached()
+  return core.active_view.doc and cache[core.active_view.doc]
+end
+
+command.add(has_cached, {
+  ["linter:move-to-next-warning"] = function()
+    local doc = core.active_view.doc
+    local line = doc:get_selection()
+    local cached = cache[doc]
+    local idx, min = math.huge, math.huge
+    for k in pairs(cached) do
+      if type(k) == "number" then
+        min = math.min(k, min)
+        if k < idx and k > line then idx = k end
+      end
+    end
+    idx = (idx == math.huge) and min or idx
+    if idx == math.huge then
+      core.error("Document does not contain any warnings")
+      return
+    end
+    if cached[idx] then
+      doc:set_selection(idx, cached[idx][1].col)
+      core.active_view:scroll_to_line(idx, true)
+    end
+  end,
+})
 
 
 return {
