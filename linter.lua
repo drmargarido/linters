@@ -68,7 +68,7 @@ local function update_cache(doc)
     get_file_warnings(d, path, l)
   end
   for idx, t in pairs(d) do
-    t.line_text = doc.lines[idx]
+    t.line_text = doc.lines[idx] or ""
   end
   cache[doc] = d
 end
