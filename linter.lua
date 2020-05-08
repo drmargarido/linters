@@ -3,6 +3,7 @@ local style = require "core.style"
 local command = require "core.command"
 local config = require "core.config"
 local DocView = require "core.docview"
+local StatusView = require "core.statusview"
 local Doc = require "core.doc"
 
 config.linter_box_line_limit = 80
@@ -236,6 +237,30 @@ function DocView:draw()
   if hover_boxes[self] then
     core.root_view:defer_draw(draw_warning_box, hover_boxes[self])
   end
+end
+
+
+local get_items = StatusView.get_items
+function StatusView:get_items()
+  local left, right  = get_items(self)
+
+  local doc = core.active_view.doc
+  local cached = cache[doc or ""]
+  if cached then
+    local count = 0
+    for _, v in pairs(cached) do
+      count = count + #v
+    end
+    table.insert(left, StatusView.separator)
+    if not doc:is_dirty() and count > 0 then
+      table.insert(left, style.text)
+    else
+      table.insert(left, style.dim)
+    end
+    table.insert(left, "warnings: " .. count)
+  end
+
+  return left, right
 end
 
 
