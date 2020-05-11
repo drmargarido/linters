@@ -8,7 +8,7 @@ config.standard_args = {}
 
 linter.add_language {
   file_patterns = {"%.js$"},
-  warning_pattern = "[^:]:(%d+):(%d+): ([^\n]+)",
+  warning_pattern = "([^:]+):(%d+):(%d+): ([^\n]+)",
   command = "standard $ARGS $FILENAME",
   args = config.standard_args
 }

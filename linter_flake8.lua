@@ -5,7 +5,7 @@ config.flake8_args = {}
 
 linter.add_language {
   file_patterns = {"%.py$"},
-  warning_pattern = "[^:]:(%d+):(%d+):%s[%w]+%s([^\n]*)",
+  warning_pattern = "([^:]+):(%d+):(%d+):%s[%w]+%s([^\n]*)",
   command = "flake8 $ARGS $FILENAME",
   args = config.flake8_args
 }

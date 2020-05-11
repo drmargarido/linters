@@ -8,7 +8,7 @@ config.eslint_args = {}
 
 linter.add_language {
   file_patterns = {"%.js$"},
-  warning_pattern = "[^:]:(%d+):(%d+): ([^\n]+)",
+  warning_pattern = "([^:]+):(%d+):(%d+): ([^\n]+)",
   command = "eslint --format unix $ARGS $FILENAME",
   args = config.eslint_args
 }
