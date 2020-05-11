@@ -28,16 +28,19 @@ end
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
   local pattern = linter.warning_pattern
-  for line, col, warn in w_text:gmatch(pattern) do
-    line = tonumber(line)
-    col = tonumber(col)
-    if not warnings[line] then
-      warnings[line] = {}
+  for w_path, line, col, warn in w_text:gmatch(pattern) do
+    local i = path:find(w_path:sub(2))
+    if i ~= nil then
+      line = tonumber(line)
+      col = tonumber(col)
+      if not warnings[line] then
+        warnings[line] = {}
+      end
+      local w = {}
+      w.col = col
+      w.text = warn
+      table.insert(warnings[line], w)
     end
-    local w = {}
-    w.col = col
-    w.text = warn
-    table.insert(warnings[line], w)
   end
 end
 
