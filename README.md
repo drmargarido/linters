@@ -3,6 +3,8 @@ Linters for https://github.com/rxi/lite
 
 ## Available linters
 
+* linter\_ameba - Uses ameba for crystal files
+* linter\_dscanner - Uses dscanner for d files
 * linter\_eslint - Uses eslint for javascript files
 * linter\_flake8 - Uses flake8 for python files
 * linter\_gocompiler - Uses the go vet command to display compilation errors in golang files
