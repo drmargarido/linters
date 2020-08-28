@@ -9,6 +9,7 @@ local Doc = require "core.doc"
 config.linter_box_line_limit = 80
 
 
+local current_doc = nil
 local cache = setmetatable({}, { __mode = "k" })
 local hover_boxes = setmetatable({}, { __mode = "k" })
 local linters = {}
@@ -25,10 +26,53 @@ local function run_lint_cmd(path, linter)
 end
 
 
+local function match_pattern(text, pattern, order)
+  if order == nil then
+    return text:gmatch(pattern)
+  end
+
+  return coroutine.wrap(function()
+    for one, two, three in text:gmatch(pattern) do
+      local line, col, warn
+      for field,position in pairs(order) do
+        local value
+        if position == 1 then
+          value = one
+        elseif position == 2 then
+          value = two
+        elseif position == 3 then
+          value = three
+        end
+
+        if field == "line" then
+          line = value
+        elseif field == "col" then
+          col = value
+        elseif field == "message" then
+          warn = value
+        end
+      end
+
+      if line == nil then line = 1 end
+      if col == nil then col = 1 end
+      if warn == nil then warn = "syntax error" end
+
+      if current_doc ~= nil then
+        if tonumber(line) > #current_doc.lines then
+          line = #current_doc.lines
+        end
+      end
+      coroutine.yield(line, col, warn)
+    end
+  end)
+end
+
+
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
   local pattern = linter.warning_pattern
-  for line, col, warn in w_text:gmatch(pattern) do
+  local order = linter.warning_pattern_order
+  for line, col, warn in match_pattern(w_text, pattern, order) do
     line = tonumber(line)
     col = tonumber(col)
     if not warnings[line] then
@@ -91,12 +135,14 @@ end
 
 local clean = Doc.clean
 function Doc:clean(...)
+  current_doc = self
   clean(self, ...)
   update_cache(self)
 end
 
 local new = Doc.new
 function Doc:new(...)
+  current_doc = self
   new(self, ...)
   update_cache(self)
 end
