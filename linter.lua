@@ -33,36 +33,19 @@ local function match_pattern(text, pattern, order)
 
   return coroutine.wrap(function()
     for one, two, three in text:gmatch(pattern) do
-      local line, col, warn
+      local fields = {one, two, three}
+      local ordered = {line = 1, col = 1, message = "syntax error"}
       for field,position in pairs(order) do
-        local value
-        if position == 1 then
-          value = one
-        elseif position == 2 then
-          value = two
-        elseif position == 3 then
-          value = three
-        end
-
-        if field == "line" then
-          line = value
-        elseif field == "col" then
-          col = value
-        elseif field == "message" then
-          warn = value
+        ordered[field] = fields[position] or ordered[field]
+        if
+          field == "line"
+          and current_doc ~= nil
+          and tonumber(ordered[field]) > #current_doc.lines
+        then
+          ordered[field] = #current_doc.lines
         end
       end
-
-      if line == nil then line = 1 end
-      if col == nil then col = 1 end
-      if warn == nil then warn = "syntax error" end
-
-      if current_doc ~= nil then
-        if tonumber(line) > #current_doc.lines then
-          line = #current_doc.lines
-        end
-      end
-      coroutine.yield(line, col, warn)
+      coroutine.yield(ordered.line, ordered.col, ordered.message)
     end
   end)
 end
