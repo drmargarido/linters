@@ -53,7 +53,7 @@ end
 
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
-  local pattern = linter.warning_pattern
+  local pattern = linter.warning_pattern:gsub("$FILENAME", path)
   local order = linter.warning_pattern_order
   for line, col, warn in match_pattern(w_text, pattern, order) do
     line = tonumber(line)
@@ -61,10 +61,22 @@ local function get_file_warnings(warnings, path, linter)
     if not warnings[line] then
       warnings[line] = {}
     end
-    local w = {}
-    w.col = col
-    w.text = warn
-    table.insert(warnings[line], w)
+
+    -- Check duplicates
+    local is_duplicate = false
+    if linter.deduplicate then
+      for _, w in ipairs(warnings[line]) do
+        if w.col == col and w.text == warn then
+          is_duplicate = true
+          break
+        end
+      end
+    end
+
+    -- Register warning
+    if not is_duplicate then
+      table.insert(warnings[line],  {col=col, text=warn})
+    end
   end
 end
 
