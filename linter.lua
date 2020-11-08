@@ -51,9 +51,45 @@ local function match_pattern(text, pattern, order)
 end
 
 
+local function is_duplicate(line_warns, col, warn)
+  for _, w in ipairs(line_warns) do
+    if w.col == col and w.text == warn then
+      return true
+    end
+  end
+  return false
+end
+
+-- Escape string so it can be used in a lua pattern
+local to_escape = {
+  ["%"] = true,
+  ["("] = true,
+  [")"] = true,
+  ["."] = true,
+  ["+"] = true,
+  ["-"] = true,
+  ["*"] = true,
+  ["["] = true,
+  ["]"] = true,
+  ["?"] = true,
+  ["^"] = true,
+  ["$"] = true
+}
+local function escape_to_pattern(text)
+  local escaped = {}
+  for char in text:gmatch(".") do
+    if to_escape[char] then
+      table.insert(escaped, "%%")
+    end
+    table.insert(escaped, char)
+  end
+  return table.concat(escaped, "")
+end
+
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
-  local pattern = linter.warning_pattern:gsub("$FILENAME", path)
+  local escaped = escape_to_pattern(path)
+  local pattern = linter.warning_pattern:gsub("$FILENAME", escaped)
   local order = linter.warning_pattern_order
   for line, col, warn in match_pattern(w_text, pattern, order) do
     line = tonumber(line)
@@ -62,20 +98,10 @@ local function get_file_warnings(warnings, path, linter)
       warnings[line] = {}
     end
 
-    -- Check duplicates
-    local is_duplicate = false
-    if linter.deduplicate then
-      for _, w in ipairs(warnings[line]) do
-        if w.col == col and w.text == warn then
-          is_duplicate = true
-          break
-        end
-      end
-    end
-
-    -- Register warning
-    if not is_duplicate then
-      table.insert(warnings[line],  {col=col, text=warn})
+    local deduplicate = linter.deduplicate or false
+    local exists = deduplicate and is_duplicate(warnings[line], col, warn)
+    if not exists then
+      table.insert(warnings[line], {col=col, text=warn})
     end
   end
 end
