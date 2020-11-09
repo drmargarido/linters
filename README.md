@@ -10,6 +10,7 @@ Linters for https://github.com/rxi/lite
 * linter\_gocompiler - Uses the go vet command to display compilation errors in golang files
 * linter\_golint - Uses golint for golang files
 * linter\_luacheck - Uses luacheck for lua files
+* linter\_nim - Uses nim check for nim files
 * linter\_php - Uses built-in php binary -l flag for php files
 * linter\_shellcheck - Uses shellcheck linter for shell script files
 * linter\_standard - Uses standard linter for javascript files
