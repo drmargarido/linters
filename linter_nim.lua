@@ -17,9 +17,9 @@ if PLATFORM == "Windows" then
       else
         if warn then warn = warn.."\n"..line_text end
       end
-      -- When we reach the end of the lines we didn't report the last warning
-      if warn then coroutine.yield(line, col, warn) end
     end
+    -- When we reach the end of the lines we didn't report the last warning
+    if warn then coroutine.yield(line, col, warn) end
   end
 else
   pattern = [[$FILENAME%((%d+), (%d+)%)([^\n]+[^/]*)]]
