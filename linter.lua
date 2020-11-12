@@ -26,7 +26,13 @@ local function run_lint_cmd(path, linter)
 end
 
 
-local function match_pattern(text, pattern, order)
+local function match_pattern(text, pattern, order, filename)
+  if type(pattern) == "function" then
+    return coroutine.wrap(function()
+      pattern(text, filename)
+    end)
+  end
+
   if order == nil then
     return text:gmatch(pattern)
   end
@@ -51,20 +57,65 @@ local function match_pattern(text, pattern, order)
 end
 
 
+local function is_duplicate(line_warns, col, warn)
+  for _, w in ipairs(line_warns) do
+    if w.col == col and w.text == warn then
+      return true
+    end
+  end
+  return false
+end
+
+-- Escape string so it can be used in a lua pattern
+local to_escape = {
+  ["%"] = true,
+  ["("] = true,
+  [")"] = true,
+  ["."] = true,
+  ["+"] = true,
+  ["-"] = true,
+  ["*"] = true,
+  ["["] = true,
+  ["]"] = true,
+  ["?"] = true,
+  ["^"] = true,
+  ["$"] = true
+}
+local function escape_to_pattern(text, count)
+  local count = count or 1
+  local escaped = {}
+  for char in text:gmatch(".") do
+    if to_escape[char] then
+      for _=1,count do
+        table.insert(escaped, "%")
+      end
+    end
+    table.insert(escaped, char)
+  end
+  return table.concat(escaped, "")
+end
+
 local function get_file_warnings(warnings, path, linter)
   local w_text = run_lint_cmd(path, linter)
+  local double_escaped = escape_to_pattern(path, 2)
   local pattern = linter.warning_pattern
+  if type(pattern) == "string" then
+    pattern = pattern:gsub("$FILENAME", double_escaped)
+  end
   local order = linter.warning_pattern_order
-  for line, col, warn in match_pattern(w_text, pattern, order) do
+  local escaped = escape_to_pattern(path)
+  for line, col, warn in match_pattern(w_text, pattern, order, escaped) do
     line = tonumber(line)
     col = tonumber(col)
     if not warnings[line] then
       warnings[line] = {}
     end
-    local w = {}
-    w.col = col
-    w.text = warn
-    table.insert(warnings[line], w)
+
+    local deduplicate = linter.deduplicate or false
+    local exists = deduplicate and is_duplicate(warnings[line], col, warn)
+    if not exists then
+      table.insert(warnings[line], {col=col, text=warn})
+    end
   end
 end
 
