@@ -103,8 +103,7 @@ local function get_file_warnings(warnings, path, linter)
     pattern = pattern:gsub("$FILENAME", double_escaped)
   end
   local order = linter.warning_pattern_order
-  local escaped = escape_to_pattern(path)
-  for line, col, warn in match_pattern(w_text, pattern, order, escaped) do
+  for line, col, warn in match_pattern(w_text, pattern, order, path) do
     line = tonumber(line)
     col = tonumber(col)
     if not warnings[line] then

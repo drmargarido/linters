@@ -4,7 +4,7 @@ local PATHSEP = package.config:sub(1, 1)
 local pattern = function(text, filename)
   local line, col, warn, path, l, c, w
   for line_text in text:gmatch("[^\n]+") do
-    path, l, c, w = line_text:match("([^:]):(%d+):(%d+):[%s]?([^\n]+)")
+    path, l, c, w = line_text:match("([^:]+):(%d+):(%d+):[%s]?([^\n]+)")
     local has_filename = path and filename:match(linter.escape_to_pattern(path))
     if path then
       if warn then -- End of the last warning

@@ -6,7 +6,7 @@ if PLATFORM == "Windows" then
     local line, col, warn
     for line_text in text:gmatch("[^\n]+") do
       local has_path = line_text:match("[A-Z]:\\")
-      local has_filename = line_text:match(filename)
+      local has_filename = line_text:match(linter.escape_to_pattern(filename))
       if has_path then
         if warn then coroutine.yield(line, col, warn) end
         if has_filename then
