@@ -82,7 +82,7 @@ local to_escape = {
   ["$"] = true
 }
 local function escape_to_pattern(text, count)
-  local count = count or 1
+  count = count or 1
   local escaped = {}
   for char in text:gmatch(".") do
     if to_escape[char] then
@@ -376,5 +376,6 @@ command.add(has_cached, {
 return {
   add_language = function(lang)
     table.insert(linters, lang)
-  end
+  end,
+  escape_to_pattern = escape_to_pattern
 }
