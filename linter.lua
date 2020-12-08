@@ -106,6 +106,9 @@ local function get_file_warnings(warnings, path, linter)
   for line, col, warn in match_pattern(w_text, pattern, order, path) do
     line = tonumber(line)
     col = tonumber(col)
+    if linter.column_starts_at_zero then
+      col = col + 1
+    end
     if not warnings[line] then
       warnings[line] = {}
     end
