@@ -7,24 +7,102 @@ local StatusView = require "core.statusview"
 local Doc = require "core.doc"
 
 config.linter_box_line_limit = 80
+config.tmpfile_prefix = "linter_"
+config.linter_scan_interval = 0.1 -- scan every 100 ms
 
+-- environments
+local is_windows = PATHSEP == "\\"
+local command_sep = is_windows and "&" or ";"
+local exitcode_cmd = is_windows and "echo %errorlevel%" or "echo $?"
 
 local current_doc = nil
 local cache = setmetatable({}, { __mode = "k" })
 local hover_boxes = setmetatable({}, { __mode = "k" })
+local linter_queue = setmetatable({}, { __mode = "k" })
 local linters = {}
 
+-- this is optional, just trying to make the RNG more random
+math.randomseed(os.time())
 
-local function run_lint_cmd(path, linter)
+--[[
+  The whole existence of this function just screams at terrible tmpnam is.
+  You don't get to decide the prefix, so if the compiler is not set up properly, the generated
+  path will have slashes in front of it. Who knows what tmpnam is going to do next.
+  I guess I will just roll my own generator and pray hard.
+]]
+local function tmpname(prefix)
+  prefix = prefix or ""
+  return string.format("%s_%d_%06d", prefix, os.time(), math.random(0, 999999))
+end
+
+local function lint_completion_thread()
+  while true do
+    coroutine.yield(config.linter_scan_interval)
+
+    for _, queue in pairs(linter_queue) do
+      if #queue > 0 then
+        local proc = queue[#queue]
+        local current_time = os.time()
+        local diff = os.difftime(proc.start, current_time)
+        if diff > proc.timeout then
+          proc.callback(nil, "Timeout reached")
+          table.remove(queue)
+          break
+        end
+
+        local fp = io.open(proc.status)
+        if fp ~= nil and io.type(fp) == "file" then
+          local output = ""
+          local exitcode = fp:read("*n")
+          fp:close()
+          os.remove(proc.status)
+          
+          fp = io.open(proc.output, "r")
+          if io.type(fp) == "file" then
+            output = fp:read("*a")
+            fp:close()
+            os.remove(proc.output)
+          end
+          
+          proc.callback({ output = output, exitcode = exitcode })
+          table.remove(queue)
+          break
+        end
+      end
+    end
+  end
+end
+core.add_thread(lint_completion_thread)
+
+local function async_run_lint_cmd(doc, path, linter, callback, timeout)
+  timeout = timeout or 10
   local cmd = linter.command:gsub("$FILENAME", path)
   local args = table.concat(linter.args or {}, " ")
   cmd = cmd:gsub("$ARGS", args)
-  local fp = io.popen(cmd, "r")
-  local res = fp:read("*a")
-  local success = fp:close()
-  return res:gsub("%\n$", ""), success
-end
 
+  local output_file = tmpname(config.tmpfile_prefix)
+  local status_file = output_file .. "_STATUS"
+  local start_time = os.time()
+  cmd = string.format("%s > %q 2>&1 %s %s > %q",
+                      cmd,
+                      output_file,
+                      command_sep,
+                      exitcode_cmd,
+                      status_file)
+  system.exec(cmd)
+
+  if linter_queue[doc] == nil then
+    linter_queue[doc] = {}
+  end
+  local queue = linter_queue[doc]
+  queue[#queue+1] = {
+    output = output_file,
+    status = status_file,
+    start = start_time,
+    timeout = timeout,
+    callback = callback
+  }
+end
 
 local function match_pattern(text, pattern, order, filename)
   if type(pattern) == "function" then
@@ -95,32 +173,42 @@ local function escape_to_pattern(text, count)
   return table.concat(escaped, "")
 end
 
-local function get_file_warnings(warnings, path, linter)
-  local w_text = run_lint_cmd(path, linter)
+local function async_get_file_warnings(doc, warnings, linter, callback)
+  local path = system.absolute_path(doc.filename)
   local double_escaped = escape_to_pattern(path, 2)
   local pattern = linter.warning_pattern
   if type(pattern) == "string" then
     pattern = pattern:gsub("$FILENAME", double_escaped)
   end
-  local order = linter.warning_pattern_order
-  for line, col, warn in match_pattern(w_text, pattern, order, path) do
-    line = tonumber(line)
-    col = tonumber(col)
-    if linter.column_starts_at_zero then
-      col = col + 1
-    end
-    if not warnings[line] then
-      warnings[line] = {}
+
+  local function on_linter_completion(data, error)
+    if data == nil or data.exitcode ~= 0 then
+      return callback(nil, error or data.output)
     end
 
-    local deduplicate = linter.deduplicate or false
-    local exists = deduplicate and is_duplicate(warnings[line], col, warn)
-    if not exists then
-      table.insert(warnings[line], {col=col, text=warn})
+    local text = data.output
+    local order = linter.warning_pattern_order
+    for line, col, warn in match_pattern(text, pattern, order, path) do
+      line = tonumber(line)
+      col = tonumber(col)
+      if linter.column_starts_at_zero then
+        col = col + 1
+      end
+      if not warnings[line] then
+        warnings[line] = {}
+      end
+
+      local deduplicate = linter.deduplicate or false
+      local exists = deduplicate and is_duplicate(warnings[line], col, warn)
+      if not exists then
+        table.insert(warnings[line], {col=col, text=warn})
+      end
     end
+    callback(true)
   end
-end
 
+  async_run_lint_cmd(doc, path, linter, on_linter_completion)
+end
 
 local function matches_any(filename, patterns)
   for _, ptn in ipairs(patterns) do
@@ -145,14 +233,25 @@ local function update_cache(doc)
   if not lints[1] then return end
 
   local d = {}
-  local path = system.absolute_path(doc.filename)
+  local function on_warning()
+    for idx, t in pairs(d) do
+      t.line_text = doc.lines[idx] or ""
+    end
+    cache[doc] = d
+  end
+
+  
   for _, l in ipairs(lints) do
-    get_file_warnings(d, path, l)
+    local linter_name = l.command:match("%S+")
+    core.log("Linting %s with %s...", doc.filename, linter_name)
+    async_get_file_warnings(doc, d, l, function()
+      for idx, t in pairs(d) do
+        t.line_text = doc.lines[idx] or ""
+      end
+      cache[doc] = d
+      core.log("Done linting %s with %s.", doc.filename, linter_name)
+    end)
   end
-  for idx, t in pairs(d) do
-    t.line_text = doc.lines[idx] or ""
-  end
-  cache[doc] = d
 end
 
 
