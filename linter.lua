@@ -35,40 +35,41 @@ local function tmpname(prefix)
   return string.format("%s_%d_%06d", prefix, os.time(), math.random(0, 999999))
 end
 
+local function check_completion(queue)
+  if #queue == 0 then return end
+
+  local proc = queue[#queue]
+  local current_time = os.time()
+  local diff = os.difftime(proc.start, current_time)
+  if diff > proc.timeout then
+    table.remove(queue)
+    return proc.callback(nil, "Timeout reached")
+  end
+
+  local fp = io.open(proc.status)
+  if io.type(fp) == "file" then
+    local output = ""
+    local exitcode = fp:read("*n")
+    fp:close()
+    os.remove(proc.status)
+    
+    fp = io.open(proc.output, "r")
+    if io.type(fp) == "file" then
+      output = fp:read("*a")
+      fp:close()
+      os.remove(proc.output)
+    end
+    
+    table.remove(queue)
+    return proc.callback({ output = output, exitcode = exitcode })
+  end
+end
+
 local function lint_completion_thread()
   while true do
     coroutine.yield(config.linter_scan_interval)
-
     for _, queue in pairs(linter_queue) do
-      if #queue > 0 then
-        local proc = queue[#queue]
-        local current_time = os.time()
-        local diff = os.difftime(proc.start, current_time)
-        if diff > proc.timeout then
-          proc.callback(nil, "Timeout reached")
-          table.remove(queue)
-          break
-        end
-
-        local fp = io.open(proc.status)
-        if fp ~= nil and io.type(fp) == "file" then
-          local output = ""
-          local exitcode = fp:read("*n")
-          fp:close()
-          os.remove(proc.status)
-          
-          fp = io.open(proc.output, "r")
-          if io.type(fp) == "file" then
-            output = fp:read("*a")
-            fp:close()
-            os.remove(proc.output)
-          end
-          
-          proc.callback({ output = output, exitcode = exitcode })
-          table.remove(queue)
-          break
-        end
-      end
+      check_completion(queue)
     end
   end
 end
