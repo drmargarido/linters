@@ -18,7 +18,7 @@ local exitcode_cmd = is_windows and "echo %errorlevel%" or "echo $?"
 local current_doc = nil
 local cache = setmetatable({}, { __mode = "k" })
 local hover_boxes = setmetatable({}, { __mode = "k" })
-local linter_queue = setmetatable({}, { __mode = "k" })
+local linter_queue = {}
 local linters = {}
 
 -- this is optional, just trying to make the RNG more random
@@ -35,15 +35,17 @@ local function tmpname(prefix)
   return string.format("%s_%d_%06d", prefix, os.time(), math.random(0, 999999))
 end
 
-local function check_completion(queue)
-  if #queue == 0 then return end
-
-  local proc = queue[#queue]
+local function completed(proc)
   local current_time = os.time()
   local diff = os.difftime(proc.start, current_time)
   if diff > proc.timeout then
-    table.remove(queue)
-    return proc.callback(nil, "Timeout reached")
+    proc.callback(nil, "Timeout reached")
+    return true
+  end
+
+  if not proc.doc.ref then -- if the doc is destroyed, delete the item too
+    proc.callback(nil, "Weak reference destroyed")
+    return true
   end
 
   local fp = io.open(proc.status)
@@ -51,7 +53,7 @@ local function check_completion(queue)
     local output = ""
     local exitcode = fp:read("*n")
     fp:close()
-    os.remove(proc.status)
+    local res, e = os.remove(proc.status)
     
     fp = io.open(proc.output, "r")
     if io.type(fp) == "file" then
@@ -60,16 +62,29 @@ local function check_completion(queue)
       os.remove(proc.output)
     end
     
-    table.remove(queue)
-    return proc.callback({ output = output, exitcode = exitcode })
+    proc.callback({ output = output, exitcode = exitcode })
+    return true
   end
+  return false
 end
 
 local function lint_completion_thread()
   while true do
     coroutine.yield(config.linter_scan_interval)
-    for _, queue in pairs(linter_queue) do
-      check_completion(queue)
+    
+    local j, n = 1, #linter_queue
+    for i = 1, n, 1 do
+      if not completed(linter_queue[i]) then
+        -- move i to j since we want to keep it
+        if i ~= j then
+          linter_queue[j] = linter_queue[i]
+          linter_queue[i] = nil
+        end
+        j = j + 1
+      else
+        -- remove i
+        linter_queue[i] = nil
+      end
     end
   end
 end
@@ -92,17 +107,14 @@ local function async_run_lint_cmd(doc, path, linter, callback, timeout)
                       status_file)
   system.exec(cmd)
 
-  if linter_queue[doc] == nil then
-    linter_queue[doc] = {}
-  end
-  local queue = linter_queue[doc]
-  queue[#queue+1] = {
+  table.insert(linter_queue, {
     output = output_file,
     status = status_file,
     start = start_time,
     timeout = timeout,
-    callback = callback
-  }
+    callback = callback,
+    doc = setmetatable({ ref = doc }, { __mode = 'v' })
+  })
 end
 
 local function match_pattern(text, pattern, order, filename)
