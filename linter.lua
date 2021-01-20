@@ -53,7 +53,7 @@ local function completed(proc)
     local output = ""
     local exitcode = fp:read("*n")
     fp:close()
-    local res, e = os.remove(proc.status)
+    os.remove(proc.status)
     
     fp = io.open(proc.output, "r")
     if io.type(fp) == "file" then
@@ -61,7 +61,7 @@ local function completed(proc)
       fp:close()
       os.remove(proc.output)
     end
-    
+
     proc.callback({ output = output, exitcode = exitcode })
     return true
   end
@@ -71,7 +71,7 @@ end
 local function lint_completion_thread()
   while true do
     coroutine.yield(config.linter_scan_interval)
-    
+
     local j, n = 1, #linter_queue
     for i = 1, n, 1 do
       if not completed(linter_queue[i]) then
@@ -246,14 +246,6 @@ local function update_cache(doc)
   if not lints[1] then return end
 
   local d = {}
-  local function on_warning()
-    for idx, t in pairs(d) do
-      t.line_text = doc.lines[idx] or ""
-    end
-    cache[doc] = d
-  end
-
-  
   for _, l in ipairs(lints) do
     local linter_name = l.command:match("%S+")
     core.log("Linting %s with %s...", doc.filename, linter_name)
