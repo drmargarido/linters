@@ -258,11 +258,13 @@ local function update_cache(doc)
     local linter_name = l.command:match("%S+")
     core.log("Linting %s with %s...", doc.filename, linter_name)
     async_get_file_warnings(doc, d, l, function()
+      local i = 0
       for idx, t in pairs(d) do
         t.line_text = doc.lines[idx] or ""
+        i = i + 1
       end
       cache[doc] = d
-      core.log("Done linting %s with %s.", doc.filename, linter_name)
+      core.log("Done linting %s, found %d warning(s).", doc.filename, i)
     end)
   end
 end
