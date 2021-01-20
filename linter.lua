@@ -7,7 +7,7 @@ local StatusView = require "core.statusview"
 local Doc = require "core.doc"
 
 config.linter_box_line_limit = 80
-config.tmpfile_prefix = "linter_"
+config.tmpfile_prefix = ".linter_"
 config.linter_scan_interval = 0.1 -- scan every 100 ms
 
 -- environments
