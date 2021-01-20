@@ -195,8 +195,8 @@ local function async_get_file_warnings(doc, warnings, linter, callback)
   end
 
   local function on_linter_completion(data, error)
-    if data == nil or data.exitcode ~= 0 then
-      return callback(nil, error or data.output)
+    if data == nil then
+      return callback(nil, error)
     end
 
     local text = data.output
