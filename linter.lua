@@ -7,7 +7,6 @@ local StatusView = require "core.statusview"
 local Doc = require "core.doc"
 
 config.linter_box_line_limit = 80
-config.tmpfile_prefix = ".linter_"
 config.linter_scan_interval = 0.1 -- scan every 100 ms
 
 -- environments
@@ -20,20 +19,6 @@ local cache = setmetatable({}, { __mode = "k" })
 local hover_boxes = setmetatable({}, { __mode = "k" })
 local linter_queue = {}
 local linters = {}
-
--- this is optional, just trying to make the RNG more random
-math.randomseed(os.time())
-
---[[
-  The whole existence of this function just screams at terrible tmpnam is.
-  You don't get to decide the prefix, so if the compiler is not set up properly, the generated
-  path will have slashes in front of it. Who knows what tmpnam is going to do next.
-  I guess I will just roll my own generator and pray hard.
-]]
-local function tmpname(prefix)
-  prefix = prefix or ""
-  return string.format("%s_%d_%06d", prefix, os.time(), math.random(0, 999999))
-end
 
 local function completed(proc)
   local current_time = os.time()
@@ -96,8 +81,8 @@ local function async_run_lint_cmd(doc, path, linter, callback, timeout)
   local args = table.concat(linter.args or {}, " ")
   cmd = cmd:gsub("$ARGS", args)
 
-  local output_file = tmpname(config.tmpfile_prefix)
-  local status_file = output_file .. "_STATUS"
+  local output_file = core.temp_filename()
+  local status_file = core.temp_filename()
   local start_time = os.time()
   cmd = string.format("%s > %q 2>&1 %s %s > %q",
                       cmd,
