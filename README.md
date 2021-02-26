@@ -46,3 +46,35 @@ insert(config.luacheck_args, "--max-cyclomatic-complexity=4")
 -- Add warnings if lines pass a maximum length
 insert(config.luacheck_args, "--max-line-length=80")
 ```
+
+## Linter Fields
+
+**file\_patterns** {String} - List of patterns to match the files to which the
+linter is run.
+
+**warning\_pattern** String | Function - Matches the line, column and the
+description for each warning(In this order). If the matching is complex and
+cannot be addressed with a pattern directly a function can be used.
+
+**warning\_pattern\_order** {line=Int, col=Int, message=Int} [optional] - Allows us
+to change what is expected from the pattern when the order of the elements in
+the warning is not _line -> col -> message_.
+
+**column\_starts\_at\_zero** Bool [optional] - Is useful for some linters which have
+the column number starting at zero instead of starting at one.
+
+**command** String - Command that is run to execute the linter. It can receive a
+$FILENAME name in the middle of the command which will be replaced with the name
+of the file which is being edited when the linter is run.
+
+**deduplicate** Bool [optional] - Prevent duplicated warnings. Only needed in
+specific cases because some linters work with whole packages instead of a
+specific file and report the same warning for the same file multiple times.
+
+**args** {String} - Arguments to be passed to the linter in the command
+line call. Will replace the $ARGS in the command. Usually this table comes from
+_config.\<linter\>\_args_. This is done so the user can add it's own specific
+configurations to the linter in his own user file.
+
+**expected\_exitcodes** {Int} - Exit codes expected when the linter doesn't crash
+so we can report when there is an unexpected crash.

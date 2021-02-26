@@ -29,5 +29,6 @@ linter.add_language {
   file_patterns = {"%.nim$", "%.nims$"},
   warning_pattern = pattern,
   command = "nim --listfullpaths --stdout check $FILENAME",
-  deduplicate = true
+  deduplicate = true,
+  expected_exitcodes = {0, 1}
 }

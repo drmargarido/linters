@@ -39,7 +39,7 @@ local function completed(proc)
     local exitcode = fp:read("*n")
     fp:close()
     os.remove(proc.status)
-    
+
     fp = io.open(proc.output, "r")
     if io.type(fp) == "file" then
       output = fp:read("*a")
@@ -185,6 +185,19 @@ local function async_get_file_warnings(doc, warnings, linter, callback)
     end
 
     local text = data.output
+    if linter.expected_exitcodes then
+      local valid_code = false
+      for _, exitcode in ipairs(linter.expected_exitcodes) do
+        if data.exitcode == exitcode then
+          valid_code = true
+        end
+      end
+
+      if not valid_code then
+        return callback(nil, text)
+      end
+    end
+
     local order = linter.warning_pattern_order
     for line, col, warn in match_pattern(text, pattern, order, path) do
       line = tonumber(line)
@@ -234,7 +247,13 @@ local function update_cache(doc)
   for _, l in ipairs(lints) do
     local linter_name = l.command:match("%S+")
     core.log("Linting %s with %s...", doc.filename, linter_name)
-    async_get_file_warnings(doc, d, l, function()
+    async_get_file_warnings(doc, d, l, function(success, error)
+      if not success then
+        core.log("Error linting %s with linter %s: %s", doc.filename, linter_name, error)
+        print(error)
+        return
+      end
+
       local i = 0
       for idx, t in pairs(d) do
         t.line_text = doc.lines[idx] or ""

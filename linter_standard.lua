@@ -10,5 +10,6 @@ linter.add_language {
   file_patterns = {"%.js$"},
   warning_pattern = "[^:]:(%d+):(%d+): ([^\n]+)",
   command = "standard $ARGS $FILENAME",
-  args = config.standard_args
+  args = config.standard_args,
+  expected_exitcodes = {0, 1}
 }

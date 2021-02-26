@@ -8,5 +8,6 @@ linter.add_language {
   warning_pattern = "[%a ]+:%s*(.*)%s+on%sline%s+(%d+)",
   warning_pattern_order = {line=2, col=nil, message=1},
   command = "php -l $ARGS $FILENAME 2>/dev/null",
-  args = config.phplint_args
+  args = config.phplint_args,
+  expected_exitcodes = {0}
 }

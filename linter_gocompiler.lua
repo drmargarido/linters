@@ -25,5 +25,6 @@ linter.add_language {
   file_patterns = {"%.go$"},
   warning_pattern = pattern,
   command = "go vet -source $FILENAME"..PATHSEP..".."..PATHSEP.." 2>&1",
-  args = {}
+  args = {},
+  expected_exitcodes = {0, 1}
 }

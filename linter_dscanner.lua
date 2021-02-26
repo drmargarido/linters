@@ -7,5 +7,6 @@ linter.add_language {
   file_patterns = {"%.d$"},
   warning_pattern = "[^:]%((%d+):(%d+)%)[%s]?([^\n]+)",
   command = "dscanner $FILENAME $ARGS",
-  args = config.dscanner_args
+  args = config.dscanner_args,
+  expected_exitcodes = {0, 1}
 }
