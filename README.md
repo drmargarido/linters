@@ -16,6 +16,7 @@ Linters for https://github.com/rxi/lite
 * linter\_pylint - Uses pylint for python files
 * linter\_shellcheck - Uses shellcheck linter for shell script files
 * linter\_standard - Uses standard linter for javascript files
+* linter\_jshint - Uses jshint linter for javascript files
 
 ## Demo
 
