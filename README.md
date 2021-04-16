@@ -9,6 +9,7 @@ Linters for https://github.com/rxi/lite
 * linter\_flake8 - Uses flake8 for python files
 * linter\_gocompiler - Uses the go vet command to display compilation errors in golang files
 * linter\_golint - Uses golint for golang files
+* linter\_jshint - Uses jshint linter for javascript files
 * linter\_luacheck - Uses luacheck for lua files
 * linter\_teal - Uses tl check for teal files
 * linter\_nim - Uses nim check for nim files
@@ -16,7 +17,6 @@ Linters for https://github.com/rxi/lite
 * linter\_pylint - Uses pylint for python files
 * linter\_shellcheck - Uses shellcheck linter for shell script files
 * linter\_standard - Uses standard linter for javascript files
-* linter\_jshint - Uses jshint linter for javascript files
 
 ## Demo
 
