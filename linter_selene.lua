@@ -8,5 +8,5 @@ linter.add_language {
   warning_pattern = ".-:(%d+):(%d+): .-:([^\n]+)",
   command = "selene $FILENAME --display-style quiet $ARGS",
   args = config.selene_args,
-  expected_exitcodes = {0}
+  expected_exitcodes = {1}
 }
