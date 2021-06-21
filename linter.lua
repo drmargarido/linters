@@ -77,7 +77,7 @@ core.add_thread(lint_completion_thread)
 
 local function async_run_lint_cmd(doc, path, linter, callback, timeout)
   timeout = timeout or 10
-  local cmd = linter.command:gsub("$FILENAME", path)
+  local cmd = linter.command:gsub("$FILENAME", string.format("%q", path))
   local args = table.concat(linter.args or {}, " ")
   cmd = cmd:gsub("$ARGS", args)
 
