@@ -18,6 +18,7 @@ Linters for https://github.com/rxi/lite
 * linter\_selene - Uses selene for lua files
 * linter\_shellcheck - Uses shellcheck linter for shell script files
 * linter\_standard - Uses standard linter for javascript files
+* linter_zig - Uses `zig ast-check` for linting zig files
 
 ## Demo
 
