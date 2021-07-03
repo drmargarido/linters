@@ -8,6 +8,7 @@ local Doc = require "core.doc"
 
 config.linter_box_line_limit = 80
 config.linter_scan_interval = 0.1 -- scan every 100 ms
+config.warning_font = style.font
 
 -- environments
 local is_windows = PATHSEP == "\\"
@@ -393,7 +394,7 @@ end
 
 
 local function draw_warning_box(hovered_item)
-  local font = style.font
+  local font = config.warning_font
   local th = font:get_height()
   local pad = style.padding
 
