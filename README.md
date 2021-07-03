@@ -32,7 +32,7 @@ Example of linting a file.
 `data/plugins/` of the lite editor which has the needed foundation for the linters.
 2. Copy the specific linters you want to use to the same folder.
 3. Make sure you have the commands needed for each linter to use them.
-4. If you want to configure options in some of the linters you can edit you `data/user/init.lua`
+4. If you want to configure options in some of the linters you can edit your `data/user/init.lua`
 
 ```lua
 local config = require "core.config"
@@ -81,3 +81,18 @@ configurations to the linter in his own user file.
 
 **expected\_exitcodes** {Int} - Exit codes expected when the linter doesn't crash
 so we can report when there is an unexpected crash.
+
+## Configurations
+
+The base linter code also allows some configurations that apply to all linters.
+You can set them in you user file - `data/user/init.lua`.
+
+The available configurations are:
+* linter\_box\_line\_limit - Number of columns in the warning box
+* linter\_scan\_interval - Seconds between checks for saves
+* warning\_font - Font to be used inside the warning box
+
+Example configuration:
+```lua
+config.warning_font = renderer.font.load(EXEDIR .. "/data/fonts/monospace.ttf", 13.5 * SCALE)
+```
