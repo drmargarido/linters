@@ -6,9 +6,17 @@ local DocView = require "core.docview"
 local StatusView = require "core.statusview"
 local Doc = require "core.doc"
 
-config.linter_box_line_limit = 80
+config.linter_box_line_limit = 80 -- characters limit
 config.linter_scan_interval = 0.1 -- scan every 100 ms
+
+-- Available Triggers - "save" "keypress"
+--
+-- Most linters will not work fast enought to use keypress as the event, use it
+-- only if you are sure of what you are doing. For keypress to work we enforce
+-- auto save on every keypress.
+config.linter_trigger = "save"
 config.warning_font = style.font
+
 
 -- environments
 local is_windows = PATHSEP == "\\"
@@ -293,6 +301,41 @@ function Doc:new(...)
   new(self, ...)
   update_cache(self)
 end
+
+-- Document action overrides to make trigger on keypress work.
+-- Keypress trigger works by saving on every adition / removal.
+local text_input = Doc.text_input
+function Doc:text_input(...)
+  text_input(self, ...)
+  if config.linter_trigger == "keypress" then
+    self:save()
+  end
+end
+
+local delete_to = Doc.delete_to
+function Doc:delete_to(...)
+  delete_to(self, ...)
+  if config.linter_trigger == "keypress" then
+    self:save()
+  end
+end
+
+local undo = Doc.undo
+function Doc:undo(...)
+  undo(self, ...)
+  if config.linter_trigger == "keypress" then
+    self:save()
+  end
+end
+
+local redo = Doc.redo
+function Doc:redo(...)
+  redo(self, ...)
+  if config.linter_trigger == "keypress" then
+    self:save()
+  end
+end
+
 
 
 local on_mouse_wheel = DocView.on_mouse_wheel
